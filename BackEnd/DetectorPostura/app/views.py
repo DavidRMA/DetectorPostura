@@ -79,7 +79,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='registros')
     def obtener_registros(self, request, pk=None):
         try:
-            usuario = self.get_object()  # ✅ Obtiene Usuario correctamente
+            usuario = self.get_object()
             registros = RegistroPostura.objects.filter(usuario=usuario).order_by('-fechaRegistro')
             serializer = RegistroPosturaSerializer(registros, many=True)
             print(f"Listando registros del usuario {pk}...")

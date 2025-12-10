@@ -1,12 +1,14 @@
 import { Eye } from "lucide-react";
 import { Table } from "../ui/table";
 import { useHistoryData } from "../../hooks/useHistoryData";
-import { useUserProfile } from '../../hooks/useUserProfile';
+import { useUserProfile } from "../../hooks/useUserProfile";
 import { useEffect } from "react";
 
 export function Historial() {
-  const { userProfile } = useUserProfile();
-  const { historyData, loading, error, refresh } = useHistoryData(userProfile?.id);
+  const storedProfile = localStorage.getItem("postureCorrectUserProfile");
+  const userId = storedProfile ? JSON.parse(storedProfile).data.id : undefined;
+
+  const { historyData, loading, error, refresh } = useHistoryData(userId);
 
   useEffect(() => {
     console.log("Datos del historial:", historyData);
@@ -40,23 +42,33 @@ export function Historial() {
             <tr>
               <th className="px-6 py-4 text-left text-gray-600">Fecha</th>
               <th className="px-6 py-4 text-left text-gray-600">Duración</th>
-              <th className="px-6 py-4 text-left text-gray-600">Número de Alertas</th>
+              <th className="px-6 py-4 text-left text-gray-600">
+                Número de Alertas
+              </th>
               <th className="px-6 py-4 text-left text-gray-600">Score (%)</th>
               <th className="px-6 py-4 text-left text-gray-600">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {historyData.map((row, index) => (
+            {historyData?.map((row, index) => (
               <tr key={index} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 text-gray-900">{row.date}</td>
-                <td className="px-6 py-4 text-gray-900">{row.duration}</td>
-                <td className="px-6 py-4 text-gray-900">{row.alerts}</td>
+                <td className="px-6 py-4 text-gray-900">
+                  {row.fechaRegistro
+                    ? new Date(row.fechaRegistro).toLocaleString()
+                    : ""}
+                </td>
+                <td className="px-6 py-4 text-gray-900">{row.duracion}</td>
+                <td className="px-6 py-4 text-gray-900">{row.numeroAlertas}</td>
                 <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full ${
-                    row.score >= 85 ? "bg-[#22C55E]/10 text-[#22C55E]" :
-                    row.score >= 75 ? "bg-[#F97316]/10 text-[#F97316]" :
-                    "bg-[#EF4444]/10 text-[#EF4444]"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full ${
+                      row.score >= 85
+                        ? "bg-[#22C55E]/10 text-[#22C55E]"
+                        : row.score >= 75
+                        ? "bg-[#F97316]/10 text-[#F97316]"
+                        : "bg-[#EF4444]/10 text-[#EF4444]"
+                    }`}
+                  >
                     {row.score}%
                   </span>
                 </td>

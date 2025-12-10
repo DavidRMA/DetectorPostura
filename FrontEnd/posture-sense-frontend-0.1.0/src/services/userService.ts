@@ -42,7 +42,7 @@ export const getUserByIdService = async (id: number): Promise<IUser> => {
   return data;
 };
 
-export const postUserService = async (user: Omit<IUser, "id" | "fecha_registro">): Promise<IUser> => {
+export const postUserService = async (user: Omit<IUser, "id" | "fecha_registro">): Promise<{ message: string, data: IUser }> => {
   try {
     const resp = await fetch(
       `${USER_URL}crear_usuario/`,

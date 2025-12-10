@@ -1,4 +1,4 @@
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import type { IPosture } from '../models/posture';
 import { getPostureService } from '../services/postureServices';
 
@@ -20,12 +20,8 @@ export function useHistoryData(userId?: number) {
 
     getPostureService(userId).then((data) => {
       if (!mounted) return;
-      const mappedData = data.map(item => ({
-        ...item,
-        fechaRegistro: item.fechaRegistro || (item as any).fecha_registro,
-        numeroAlertas: item.numeroAlertas || (item as any).numero_alertas,
-      }));
-      setHistoryData(mappedData);
+      const array = Array.isArray(data) ? data : data.data;
+      setHistoryData(array ?? []);
       setError(null);
     })
     .catch((err) => {

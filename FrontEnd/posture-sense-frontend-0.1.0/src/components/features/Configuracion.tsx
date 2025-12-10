@@ -7,7 +7,7 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import type { IUser } from "../../models/user";
 
 export function Configuracion() {
-  const { userProfile, isNewUser, createUserProfile, loading, error } = useUserProfile();
+  const { userProfile, isNewUser, createUserProfile, updateUserProfile, fetchUserProfileById, loading, error } = useUserProfile();
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -17,7 +17,6 @@ export function Configuracion() {
 
   useEffect(() => {
     if (userProfile && !isNewUser) {
-      console.log("Cargando datos del perfil de usuario en el formulario:", userProfile);
       setFormData({
         nombre: userProfile.nombre || "",
         apellido: userProfile.apellido || "",
@@ -39,11 +38,16 @@ export function Configuracion() {
 
   // Función para manejar el guardado (solo creación)
   const handleSave = async () => {
+    console.log(isNewUser);
     // Solo permitimos guardar si es un nuevo usuario, ya que no hay función de actualizar
     if (isNewUser) {
       try {
-        await createUserProfile(formData);
+        const created = await createUserProfile(formData);
         alert("Perfil creado correctamente");
+        console.log("Perfil creado:", created);
+        if (created) {
+          await fetchUserProfileById(created.id);
+        }
       } catch (err: any) {
         alert(`Error al crear el perfil: ${err?.message || "Error desconocido"}`);
       }
