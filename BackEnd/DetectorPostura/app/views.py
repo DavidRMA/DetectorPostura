@@ -48,6 +48,27 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 'data':serializer.data}, status=status.HTTP_201_CREATED)
         return Response({'error':'Error en la creacion del usuario'}, serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    @action(detail=True, methods=['get'], url_path='registros')
+    def obtener_registros(self, request, pk=None):
+        try:
+            usuario = self.get_object()  # ✅ Obtiene Usuario correctamente
+            registros = RegistroPostura.objects.filter(usuario=usuario).order_by('-fechaRegistro')
+            serializer = RegistroPosturaSerializer(registros, many=True)
+            print(f"Listando registros del usuario {pk}...")
+            return Response(
+                {
+                    'message': 'Registros obtenidos correctamente',
+                    'data': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+        except Usuario.DoesNotExist:
+            return Response(
+                {
+                    'error': f'Usuario con id {pk} no encontrado'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class RegistroPosturaViewSet(viewsets.ModelViewSet):
     queryset = RegistroPostura.objects.all()

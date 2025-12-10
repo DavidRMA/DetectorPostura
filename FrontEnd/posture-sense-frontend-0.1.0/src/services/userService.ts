@@ -41,3 +41,30 @@ export const getUserByIdService = async (id: number): Promise<IUser> => {
 
   return data;
 };
+
+export const postUserService = async (user: Omit<IUser, "id" | "fecha_registro">): Promise<IUser> => {
+  try {
+    const resp = await fetch(
+      `${USER_URL}crear_usuario/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(user),
+      }
+    );
+
+    if (!resp.ok) {
+      const errorBody = await resp.text();
+      console.error("Error response from backend:", errorBody);
+      throw new Error(`No fue posible crear el usuario. Status: ${resp.status}`);
+    }
+
+    return await resp.json();
+
+  } catch (err: any) {
+    console.error("Error al crear el usuario:", err);
+    throw err;
+  }
+};

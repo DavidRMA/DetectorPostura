@@ -4,50 +4,27 @@ import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useUserProfile } from '../../hooks/useUserProfile';
+import type { IUser } from "../../models/user";
 
 export function Configuracion() {
-  const { userProfile, updateUserProfile, loading, error } = useUserProfile();
-
-  // Inicializar formData basado en userProfile
-  //const initialFormData = useMemo(() => {
-  //  if (userProfile) {
-  //    return {
-  //      nombre: IUser.name,
-  //      apellido: IUser.apellido,
-  //      edad: IUser.edad,
-  //      thingSpeakChannelId: userProfile.thingSpeakConfig?.channelId || "",
-  //      thingSpeakApiKey: userProfile.thingSpeakConfig?.apiKey || ""
-  //    };
-  //  }
-  //  return {
-  //    nombre: "",
-  //    apellido: "",
-  //    edad: 0,
-  //    thingSpeakChannelId: "",
-  //    thingSpeakApiKey: ""
-  //  };
-  //}, [userProfile]);
+  const { userProfile, isNewUser, createUserProfile, loading, error } = useUserProfile();
 
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
     edad: 0,
-    //thingSpeakChannelId: "",
-    //thingSpeakApiKey: ""
   });
 
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile && !isNewUser) {
       console.log("Cargando datos del perfil de usuario en el formulario:", userProfile);
       setFormData({
         nombre: userProfile.nombre || "",
         apellido: userProfile.apellido || "",
         edad: userProfile.edad || 0,
-        //thingSpeakChannelId: userProfile.thingSpeakConfig?.channelId || "",
-        //thingSpeakApiKey: userProfile.thingSpeakConfig?.apiKey || ""
       });
     }
-  }, [userProfile]);
+  }, [userProfile, isNewUser]);
 
     // Estados para la configuración de Figma
   const [sensibilidad, setSensibilidad] = useState<"baja" | "media" | "alta">("media");
@@ -60,41 +37,44 @@ export function Configuracion() {
   //  return userProfile.thresholds.neutral;
   //}, [userProfile]);
 
-  const handleSave = () => {
-    updateUserProfile({
-      nombre: formData.nombre,
-      apellido: formData.apellido,
-      edad: formData.edad,
-      //thingSpeakConfig: {
-      //  channelId: formData.thingSpeakChannelId,
-      //  apiKey: formData.thingSpeakApiKey
-      //}
-    });
-    alert("Configuración guardada correctamente");
+  // Función para manejar el guardado (solo creación)
+  const handleSave = async () => {
+    // Solo permitimos guardar si es un nuevo usuario, ya que no hay función de actualizar
+    if (isNewUser) {
+      try {
+        await createUserProfile(formData);
+        alert("Perfil creado correctamente");
+      } catch (err: any) {
+        alert(`Error al crear el perfil: ${err?.message || "Error desconocido"}`);
+      }
+    }
   };
+  
 
   const handleReset = () => {
     if (userProfile) {
       setFormData({
         nombre: userProfile.nombre,
         apellido: userProfile.apellido,
-        edad: userProfile.edad,
-        //thingSpeakChannelId: userProfile.thingSpeakConfig?.channelId || "",
-        //thingSpeakApiKey: userProfile.thingSpeakConfig?.apiKey || ""
+        edad: userProfile.edad
       });
     }
   };
 
   const hasChanges = useMemo(() => {
+    if (isNewUser) {
+      // Si es un nuevo usuario, hay cambios si se ha llenado el formulario
+      return formData.nombre !== "" || formData.apellido !== "" || formData.edad > 0;
+    }
     if (!userProfile) return false;
     
+    // Si es un usuario existente, compara con los datos del perfil
     return (
       formData.nombre !== userProfile.nombre ||
+      formData.apellido !== userProfile.apellido ||
       formData.edad !== userProfile.edad
-      //formData.thingSpeakChannelId !== (userProfile.thingSpeakConfig?.channelId || "") ||
-      //formData.thingSpeakApiKey !== (userProfile.thingSpeakConfig?.apiKey || "")
     );
-  }, [formData, userProfile]);
+  }, [formData, userProfile, isNewUser]);
 
   if (loading) {
     return (
@@ -118,7 +98,7 @@ export function Configuracion() {
 
   // 3. ¡NO RENDERIZAR NADA MÁS SI NO HAY PERFIL!
   // Esto previene que el formulario se monte con datos vacíos.
-  if (!userProfile) {
+  if (!userProfile && !isNewUser) {
     return (
         <div className="space-y-6">
           <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
@@ -155,6 +135,9 @@ export function Configuracion() {
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-full bg-[#2563EB]/10 flex items-center justify-center">
             <User className="w-5 h-5 text-[#2563EB]" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              {isNewUser ? "Crear Perfil de Usuario" : "Perfil de Usuario"}
+            </h2>
           </div>
           <h2 className="text-lg font-semibold text-gray-900">Perfil de Usuario</h2>
         </div>
@@ -166,6 +149,7 @@ export function Configuracion() {
               value={formData.nombre}
               onChange={(e) => setFormData({...formData, nombre: e.target.value})}
               placeholder="Tu nombre"
+              disabled={loading || (!isNewUser && !!userProfile)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
             />
           </div>
@@ -175,6 +159,7 @@ export function Configuracion() {
               value={formData.apellido}
               onChange={(e) => setFormData({...formData, apellido: e.target.value})}
               placeholder="Tu apellido"
+              disabled={loading || (!isNewUser && !!userProfile)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
             />
           </div>
@@ -187,6 +172,7 @@ export function Configuracion() {
               placeholder="Tu edad"
               min="1"
               max="120"
+              disabled={loading || (!isNewUser && !!userProfile)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
             />
             {userProfile && (
@@ -306,46 +292,11 @@ export function Configuracion() {
         </div>
       </Card>
 
-      {/* Sección 5: ThingSpeak - Estilo minimalista */}
-      <Card className="p-8 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Conexión con ThingSpeak</h2>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-900 mb-2">Channel ID</label>
-            <Input
-              value={formData.thingSpeakChannelId}
-              onChange={(e) => setFormData({...formData, thingSpeakChannelId: e.target.value})}
-              placeholder="1234567"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-900 mb-2">Write API Key</label>
-            <Input
-              type="password"
-              value={formData.thingSpeakApiKey}
-              onChange={(e) => setFormData({...formData, thingSpeakApiKey: e.target.value})}
-              placeholder="Tu API Key"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
-            />
-          </div>
-        </div>
-      </Card>
-
       {/* Botones de acción - Estilo Figma */}
       <div className="flex justify-end gap-4">
-        {hasChanges && (
-          <Button 
-            onClick={handleReset}
-            className="border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 px-6 py-3"
-          >
-            Descartar Cambios
-          </Button>
-        )}
         <Button 
           onClick={handleSave} 
-          disabled={!hasChanges}
+          disabled={!hasChanges || loading || !isNewUser}
           className={`px-6 py-3 flex items-center gap-2 ${
             hasChanges 
               ? "bg-[#2563EB] hover:bg-[#1d4ed8]" 
@@ -353,7 +304,7 @@ export function Configuracion() {
           } text-white`}
         >
           <Save className="w-4 h-4" />
-          {hasChanges ? "Guardar Configuración" : "Sin Cambios"}
+          {isNewUser ? "Crear Perfil" : (hasChanges ? "Guardar Cambios" : "Sin Cambios")}
         </Button>
       </div>
     </div>

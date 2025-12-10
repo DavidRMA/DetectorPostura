@@ -1,9 +1,16 @@
 import { Eye } from "lucide-react";
 import { Table } from "../ui/table";
 import { useHistoryData } from "../../hooks/useHistoryData";
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { useEffect } from "react";
 
 export function Historial() {
-  const { historyData, loading, error } = useHistoryData();
+  const { userProfile } = useUserProfile();
+  const { historyData, loading, error, refresh } = useHistoryData(userProfile?.id);
+
+  useEffect(() => {
+    console.log("Datos del historial:", historyData);
+  }, [historyData]);
 
   if (loading) {
     return (
