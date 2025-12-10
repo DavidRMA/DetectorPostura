@@ -24,10 +24,6 @@ void setup()
 
   Serial.println("\n=== POSTURE CORRECT - FIRMWARE REAL ===");
 
-  Serial.print("DEBUG SSID: [");
-  Serial.print(WIFI_SSID);
-  Serial.println("]");
-
   pinMode(VIBRATOR_PIN, OUTPUT);
   digitalWrite(VIBRATOR_PIN, LOW);
 
@@ -40,16 +36,12 @@ void setup()
     Serial.println("ERROR: MPU6050 no detectado");
   }
 
-  // 3. Intentar cargar calibración previa DESDE Calibration
-  bool hasCalib = calibrator.loadOffsetsFromEEPROM();
+  // 3. SIEMPRE calibrar (NO cargar de EEPROM)
+  Serial.println("\n⚠ CALIBRACIÓN OBLIGATORIA ⚠");
+  calibrator.runCalibration();
+  calibrator.saveOffsetsToEEPROM();
 
-  if (!hasCalib)
-  {
-    calibrator.runCalibration();
-    calibrator.saveOffsetsToEEPROM();
-  }
-
-  // 4. (Opcional) obtener config del backend (edad, umbral, etc.)
+  // 4. (Opcional) obtener config del backend
   DeviceRuntimeConfig cfg;
   if (apiClient.fetchConfig(DEVICE_ID, cfg))
   {
@@ -66,19 +58,41 @@ void setup()
 
   Serial.println("Setup completo, entrando a loop...");
 }
-
 void loop()
 {
-  // 1. Leer sensor
   float angleX, angleY;
   if (!mpu.readAngles(angleX, angleY))
-  {
-    // si falla lectura, salimos del loop
     return;
-  }
 
-  // 2. Evaluar postura (aplica offsets + umbral por edad)
   PostureStatus status = postureEval.evaluate(angleX, angleY);
+
+  // DEBUG VISUAL
+  Serial.print("RAW: X=");
+  Serial.print(angleX, 1);
+  Serial.print(" Y=");
+  Serial.print(angleY, 1);
+  Serial.print(" | REL: X=");
+  Serial.print(status.angleX, 1);
+  Serial.print(" Y=");
+  Serial.print(status.angleY, 1);
+  Serial.print(" | TILT=");
+  Serial.print(status.maxAngle, 1);
+  Serial.print("/");
+  Serial.print(status.threshold, 1);
+  Serial.print(" | BAD=");
+  Serial.print(status.isBadPosture ? "SI" : "NO");
+
+  // Barra visual
+  Serial.print(" [");
+  int bars = map(constrain(status.maxAngle, 0, 50), 0, 50, 0, 20);
+  for (int i = 0; i < 20; i++)
+  {
+    if (i < bars)
+      Serial.print("#");
+    else
+      Serial.print(".");
+  }
+  Serial.println("]");
 
   // 3. Control del vibrador según estado
   static unsigned long badPostureSince = 0;

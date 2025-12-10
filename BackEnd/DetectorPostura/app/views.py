@@ -7,6 +7,34 @@ from rest_framework import status
 from rest_framework.decorators import action
 from datetime import timedelta
 
+def calculate_posture_score(tilt_angle, threshold, bad_posture):
+    """
+    Calcula el score de postura de 0-100 basado en:
+    - tilt_angle: ángulo de inclinación actual (grados)
+    - threshold: umbral permitido (grados)
+    - bad_posture: booleano indicando si es mala postura
+    """
+    # Si no es mala postura (ángulo <= umbral), score perfecto
+    if not bad_posture:
+        return 100.0
+    
+    # Si es mala postura, calcular penalización progresiva
+    # Asumimos que el ángulo máximo razonable es 50° para cálculo
+    MAX_REASONABLE_ANGLE = 50.0
+    
+    # Asegurar que tilt_angle no exceda el máximo razonable
+    tilt_angle = min(tilt_angle, MAX_REASONABLE_ANGLE)
+    
+    # Calcular qué tan mal está la postura
+    # Si está justo en el umbral, score 100
+    # Si está en MAX_REASONABLE_ANGLE, score 0
+    if tilt_angle <= threshold:
+        return 100.0
+    else:
+        # Mapeo lineal de [threshold, MAX_REASONABLE_ANGLE] a [100, 0]
+        score = 100.0 - ((tilt_angle - threshold) / (MAX_REASONABLE_ANGLE - threshold)) * 100.0
+        return max(0.0, min(100.0, score))
+
 # Create your views here.
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
@@ -70,7 +98,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-class RegistroPosturaViewSet(viewsets.ModelViewSet):
+class RegistroPosturaViewSet(viewsets.ModelViewSet): 
     queryset = RegistroPostura.objects.all()
     serializer_class = RegistroPosturaSerializer
 
@@ -102,36 +130,39 @@ class RegistroPosturaViewSet(viewsets.ModelViewSet):
         # =============================
         # Extraer valores del paquete
         # =============================
-        tilt = get_value("posture/tilt", 0.0) or 0.0
+        tilt = get_value("posture/tilt", 0.0)
         bad_posture = bool(get_value("posture/bad_posture", 0))
-        threshold = get_value("posture/threshold", 15.0) or 15.0
+        threshold = get_value("posture/threshold", 15.0)
 
-        tilt = float(tilt)
-        threshold = float(threshold)
+        # Convertir a valores numéricos seguros
+        try:
+            tilt = float(tilt) if tilt is not None else 0.0
+        except (TypeError, ValueError):
+            tilt = 0.0
+            
+        try:
+            threshold = float(threshold) if threshold is not None else 15.0
+        except (TypeError, ValueError):
+            threshold = 15.0
+
+        # =============================
+        # CALCULAR SCORE EN EL BACKEND
+        # =============================
+        score = calculate_posture_score(tilt, threshold, bad_posture)
 
         # =============================
         # Métricas para el registro
         # =============================
-        # 1 si en ese instante hay mala postura, 0 si no
         numero_alertas = 1 if bad_posture else 0
 
-        # Score 0-100:
-        #   100   = postura perfecta (tilt <= threshold)
-        #   0     = muy mala postura (tilt >= max_tilt)
-        #   entre = escala lineal
-        max_tilt = 60.0  # a partir de aquí consideramos 0 puntos
-
-        if tilt <= threshold:
-            score = 100.0
-        elif tilt >= max_tilt:
-            score = 0.0
-        else:
-            score = 100.0 * (max_tilt - tilt) / (max_tilt - threshold)
+        print(
+            f"[BACK] tilt={tilt}, threshold={threshold}, "
+            f"bad_posture={bad_posture}, score_calculado={score}"
+        )
 
         # =============================
         # Asociar a un usuario
         # =============================
-        # Por ahora: primer usuario de la BD (para pruebas)
         usuario = Usuario.objects.first()
         if not usuario:
             return Response(
@@ -143,7 +174,7 @@ class RegistroPosturaViewSet(viewsets.ModelViewSet):
             usuario=usuario,
             duracion=timedelta(seconds=1),   # duración de la muestra
             numeroAlertas=numero_alertas,
-            score=score,
+            score=score,                     # ✅ Score calculado en backend
         )
 
         serializer = RegistroPosturaSerializer(registro)

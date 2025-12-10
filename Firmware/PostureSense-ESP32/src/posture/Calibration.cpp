@@ -70,38 +70,37 @@ void Calibration::saveOffsetsToEEPROM()
 
 void Calibration::runCalibration()
 {
-    Serial.println("\n===== 🔧 INICIANDO CALIBRACIÓN DE POSTURA =====");
-    Serial.println("Por favor mantén una postura CORRECTA durante 3 segundos...");
-    delay(3000);
-
-    float x = 0, y = 0;
+    Serial.println("\n===== 🔧 CALIBRACIÓN DE POSTURA =====");
+    Serial.println("1. Ponte de pie con ESPALDA RECTA");
+    Serial.println("2. Mira al frente");
+    Serial.println("3. Mantén hombros relajados");
+    Serial.println("4. Espera 5 segundos...\n");
+    
+    delay(5000);
+    
     float sumX = 0, sumY = 0;
-    const int samples = 50;
-
-    Serial.println("📡 Midiendo posición de referencia...");
-
+    const int samples = 100;
+    
+    Serial.println("Midiendo postura correcta...");
+    
     for (int i = 0; i < samples; i++)
     {
+        float x, y;
         if (_mpu.readAngles(x, y))
         {
             sumX += x;
             sumY += y;
+            Serial.print(".");
         }
         delay(50);
     }
-
+    
     _offsetX = sumX / samples;
     _offsetY = sumY / samples;
-
-    // Pasar offsets al PostureEvaluator
     _eval.setOffsets(_offsetX, _offsetY);
-
-    Serial.println("\n🎯 CALIBRACIÓN COMPLETADA!");
-    Serial.print("   Offsets aplicados: X=");
-    Serial.print(_offsetX);
-    Serial.print("°, Y=");
-    Serial.print(_offsetY);
-    Serial.println("°");
-    Serial.println("   ✅ Ahora 0° = posición actual del sensor");
-    Serial.println("============================================\n");
+    
+    Serial.println("\n✅ CALIBRACIÓN COMPLETADA!");
+    Serial.print("   Offset X: "); Serial.print(_offsetX); Serial.println("°");
+    Serial.print("   Offset Y: "); Serial.print(_offsetY); Serial.println("°");
+    Serial.println("   Ahora esta posición = 0° de inclinación");
 }

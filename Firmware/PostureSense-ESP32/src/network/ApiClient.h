@@ -13,4 +13,7 @@ public:
 private:
   unsigned long _lastConfigCheck = 0;
   const unsigned long CONFIG_INTERVAL_MS = 60000; // 1 min
+  
+  // Función privada para calcular score
+  float calculateScore(float tilt, float threshold, bool isBadPosture);
 };

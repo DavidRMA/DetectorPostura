@@ -40,6 +40,36 @@ bool ApiClient::fetchConfig(const char *deviceId, DeviceRuntimeConfig &cfg)
   return false;
 }
 
+// Función PRIVADA para calcular el score
+float ApiClient::calculateScore(float tilt, float threshold, bool isBadPosture) {
+  const float MAX_REASONABLE_ANGLE = 50.0;
+  
+  // Si no es mala postura, score perfecto
+  if (!isBadPosture) {
+    return 100.0;
+  }
+  
+  // Asegurar que tilt no exceda el máximo razonable
+  if (tilt > MAX_REASONABLE_ANGLE) {
+    tilt = MAX_REASONABLE_ANGLE;
+  }
+  
+  // Si está justo en el umbral, score 100
+  if (tilt <= threshold) {
+    return 100.0;
+  }
+  
+  // Calcular penalización progresiva
+  // Mapeo lineal de [threshold, MAX_REASONABLE_ANGLE] a [100, 0]
+  float score = 100.0 - ((tilt - threshold) / (MAX_REASONABLE_ANGLE - threshold)) * 100.0;
+  
+  // Limitar entre 0 y 100
+  if (score < 0.0) score = 0.0;
+  if (score > 100.0) score = 100.0;
+  
+  return score;
+}
+
 bool ApiClient::sendTelemetry(const char *deviceId,
                               const PostureStatus &status,
                               float rawX, float rawY)
@@ -61,7 +91,7 @@ bool ApiClient::sendTelemetry(const char *deviceId,
 
   /*
    * ===========================
-   *   FORMATO SENML ENVIADO
+   *   FORMATO SENML ENVIADO (ACTUALIZADO)
    * ===========================
    * [
    *   {
@@ -73,7 +103,8 @@ bool ApiClient::sendTelemetry(const char *deviceId,
    *        { "n": "posture/x",    "u": "deg", "v": 10.2 },
    *        { "n": "posture/y",    "u": "deg", "v": 15.7 },
    *        { "n": "posture/bad_posture", "u": "bool", "v": 1 },
-   *        { "n": "posture/threshold", "u": "deg", "v": 15.0 }
+   *        { "n": "posture/threshold", "u": "deg", "v": 15.0 },
+   *        { "n": "posture/score", "u": "%", "v": 85.7 }  <-- NUEVO
    *     ]
    *   }
    * ]
@@ -132,6 +163,27 @@ bool ApiClient::sendTelemetry(const char *deviceId,
     m["v"] = status.threshold;
   }
 
+  // ---- SCORE CALCULADO (NUEVO) ----
+  {
+    JsonObject m = e.createNestedObject();
+    m["n"] = "posture/score";
+    m["u"] = "%";
+    // Calcular score basado en tilt, threshold y estado
+    float calculatedScore = calculateScore(status.maxAngle, status.threshold, status.isBadPosture);
+    m["v"] = calculatedScore;
+    
+    // Debug del cálculo
+    Serial.print("[SCORE] Tilt=");
+    Serial.print(status.maxAngle);
+    Serial.print("°, Thresh=");
+    Serial.print(status.threshold);
+    Serial.print("°, Bad=");
+    Serial.print(status.isBadPosture ? "SI" : "NO");
+    Serial.print(" → Score=");
+    Serial.print(calculatedScore);
+    Serial.println("%");
+  }
+
   // Serializar JSON
   String body;
   serializeJson(doc, body);
@@ -153,8 +205,13 @@ bool ApiClient::sendTelemetry(const char *deviceId,
   }
   else
   {
-    Serial.println("[API] ❌ Error enviando telemetría.");
-    Serial.println(http.getString()); // respuesta del backend para debug
+    Serial.print("[API] ❌ Error enviando telemetría. Código: ");
+    Serial.println(code);
+    String response = http.getString();
+    if (response.length() > 0) {
+      Serial.print("[API] Respuesta: ");
+      Serial.println(response);
+    }
   }
 
   http.end();

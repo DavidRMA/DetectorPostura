@@ -42,41 +42,41 @@ float PostureEvaluator::getThreshold() const
 // Recibe ángulos CRUDOS del MPU (en grados)
 PostureStatus PostureEvaluator::evaluate(float rawX, float rawY)
 {
-  PostureStatus s;
-
-  // 1) pasar a coordenadas relativas (respecto a la postura calibrada)
-  float relX = rawX - _offsetX;
-  float relY = rawY - _offsetY;
-
-  // 2) magnitud del vector (tilt)
-  float tilt = sqrt(relX * relX + relY * relY);
-
-  // 3) comparar con umbral
-  bool bad = tilt > _thresholdDeg;
-
-  s.angleX    = relX;
-  s.angleY    = relY;
-  s.maxAngle  = tilt;
-  s.threshold = _thresholdDeg;
-  s.isBadPosture = bad;
-
-  return s;
+    PostureStatus s;
+    
+    // 1. Aplicar offsets
+    s.angleX = rawX - _offsetX;
+    s.angleY = rawY - _offsetY;
+    
+    // 2. Calcular tilt CORRECTAMENTE para espalda
+    // Normalizar ángulos a -180..180
+    s.angleX = fmod(s.angleX + 180.0, 360.0) - 180.0;
+    s.angleY = fmod(s.angleY + 180.0, 360.0) - 180.0;
+    
+    // 3. Usar solo el valor absoluto de la inclinación hacia adelante (eje Y)
+    // y un poco de la inclinación lateral (eje X)
+    float forwardTilt = abs(s.angleY);  // Inclinación hacia adelante/atrás
+    float sideTilt = abs(s.angleX) * 0.5;  // Inclinación lateral (menos peso)
+    
+    // 4. Tilt combinado (ponderado)
+    s.maxAngle = forwardTilt + sideTilt;
+    
+    // 5. Umbral dinámico
+    s.threshold = _thresholdDeg;
+    
+    // 6. Determinar mala postura
+    s.isBadPosture = (s.maxAngle > _thresholdDeg);
+    
+    return s;
 }
 
-// 🔹 REGLA POR EDADES (ajústala si quieres)
 float PostureEvaluator::computeThresholdForAge(int age)
 {
-  // Niños (<=12): más estrictos
-  // Adolescentes (13-17)
-  // Adultos (18-59)
-  // Adulto mayor (60+)
-  if (age <= 12) {
-    return 10.0f;      // postura casi recta
-  } else if (age <= 17) {
-    return 12.0f;
-  } else if (age <= 59) {
-    return 15.0f;      // adulto estándar
-  } else {
-    return 18.0f;      // adulto mayor, más margen
-  }
+    // Para DISPOSITIVO EN ESPALDA:
+    // La inclinación normal al estar sentado es ~20-30°
+    if (age <= 12)      return 25.0f;   // Niños
+    else if (age <= 17) return 28.0f;   // Adolescentes  
+    else if (age <= 40) return 30.0f;   // Adultos jóvenes
+    else if (age <= 60) return 35.0f;   // Adultos
+    else                return 40.0f;   // Adultos mayores
 }

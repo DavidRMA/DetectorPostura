@@ -32,12 +32,19 @@ bool MPU6050Sensor::readAngles(float& angleX, float& angleY) {
   int16_t ay = Wire.read() << 8 | Wire.read();
   int16_t az = Wire.read() << 8 | Wire.read();
 
-  float gx = ax / 4096.0;
-  float gy = ay / 4096.0;
-  float gz = az / 4096.0;
+  // Convertir a gravedades
+  const float ACCEL_SCALE = 16384.0; // Para ±2g
+  float accX = ax / ACCEL_SCALE;
+  float accY = ay / ACCEL_SCALE;
+  float accZ = az / ACCEL_SCALE;
 
-  angleX = atan2(gy, gz) * 180 / PI;
-  angleY = atan2(-gx, gz) * 180 / PI;
-
+  // Calcular ángulos de inclinación (roll y pitch)
+  // Para dispositivo en la ESPALDA:
+  // - angleX: inclinación lateral (roll)
+  // - angleY: inclinación hacia adelante/atrás (pitch)
+  
+  angleX = atan2(accY, accZ) * 180.0 / PI;
+  angleY = atan2(-accX, sqrt(accY*accY + accZ*accZ)) * 180.0 / PI;
+  
   return true;
 }
