@@ -43,7 +43,8 @@ export function useHistoryData(userId?: number) {
     setLoading(true);
     try {
       const d = await getPostureService(userId);
-      setHistoryData(d);
+      const array = Array.isArray(d) ? d : d.data;
+      setHistoryData(array ?? []);
       setError(null);
     } catch (e: any) {
       setError(e?.message ?? "Error desconocido");

@@ -2,17 +2,28 @@ import { Eye } from "lucide-react";
 import { Table } from "../ui/table";
 import { useHistoryData } from "../../hooks/useHistoryData";
 import { useUserProfile } from "../../hooks/useUserProfile";
-import { useEffect } from "react";
+import { use, useEffect } from "react";
 
 export function Historial() {
   const storedProfile = localStorage.getItem("postureCorrectUserProfile");
-  const userId = storedProfile ? JSON.parse(storedProfile).data.id : undefined;
-
-  const { historyData, loading, error, refresh } = useHistoryData(1);
+  //const userId = storedProfile ? JSON.parse(storedProfile).data.id : undefined;
+  const userId = 1;
+  const { historyData, loading, error, refresh } = useHistoryData(userId);
 
   useEffect(() => {
     console.log("Datos del historial:", historyData);
   }, [historyData]);
+
+  // Recargar historial cada 30 segundos
+  useEffect(() => {
+    if (!userId) return;
+    const interval = setInterval(() => {
+      refresh(userId);
+      console.log("Historial recargado");
+    }, 10000); // 10 segundos
+
+    return () => clearInterval(interval);
+  }, [userId, refresh]);
 
   if (loading) {
     return (
